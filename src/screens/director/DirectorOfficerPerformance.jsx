@@ -1,23 +1,37 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { theme } from './ExecutiveLoginPortal';
 import DirectorLayout from '../../components/director/DirectorLayout';
+import { API_BASE_URL } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 
-const MOCK_PERFORMANCE = [
-  { id: '1', name: 'Rajesh Kumar', site: 'New Delhi HQ', punctuality: 98, completion: 96, avgTime: '2.4m', incidents: 12, observations: 45, missed: 0 },
-  { id: '2', name: 'Priya Sharma', site: 'Mumbai Sector A', punctuality: 95, completion: 94, avgTime: '2.8m', incidents: 8, observations: 32, missed: 1 },
-  { id: '3', name: 'Amit Patel', site: 'Bangalore Campus', punctuality: 88, completion: 91, avgTime: '3.1m', incidents: 5, observations: 21, missed: 3 },
-];
-
 const DirectorOfficerPerformance = ({ navigation }) => {
-  const renderGauge = (value, color) => (
-    <View style={styles.gaugeContainer}>
-      <View style={styles.gaugeTrack}>
-        <View style={[styles.gaugeFill, { width: `${value}%`, backgroundColor: color }]} />
+  const [performance, setPerformance] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/director/reports/officer-performance`)
+      .then(res => res.json())
+      .then(json => {
+        setPerformance(json);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch officer performance:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  const renderGauge = (label, value) => (
+    <View style={styles.metricCol}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <View style={styles.gaugeContainer}>
+        <View style={styles.gaugeTrack}>
+          <View style={[styles.gaugeFill, { width: `${value}%`, backgroundColor: value > 90 ? '#4CAF50' : '#FF9800' }]} />
+        </View>
+        <Text style={[styles.gaugeValue, { color: value > 90 ? '#4CAF50' : '#FF9800' }]}>{value}%</Text>
       </View>
-      <Text style={[styles.gaugeValue, { color }]}>{value}%</Text>
     </View>
   );
 
@@ -52,49 +66,47 @@ const DirectorOfficerPerformance = ({ navigation }) => {
         </View>
 
         {/* Officer Cards */}
-        <View style={styles.cardsGrid}>
-          {MOCK_PERFORMANCE.map(officer => (
-            <View key={officer.id} style={styles.officerCard}>
-              <View style={styles.officerHeader}>
-                <View>
-                  <Text style={styles.officerName}>{officer.name}</Text>
-                  <Text style={styles.officerSite}>{officer.site}</Text>
+        {loading ? (
+          <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 40 }} />
+        ) : (
+          <View style={styles.cardsGrid}>
+            {performance.map(officer => (
+              <View key={officer.id} style={styles.officerCard}>
+                <View style={styles.officerHeader}>
+                  <View>
+                    <Text style={styles.officerName}>{officer.name}</Text>
+                    <Text style={styles.officerSite}>{officer.site}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.detailsBtn}><Text style={styles.detailsBtnText}>Details</Text></TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.detailsBtn}><Text style={styles.detailsBtnText}>Details</Text></TouchableOpacity>
-              </View>
 
-              <View style={styles.metricsRow}>
-                <View style={styles.metricCol}>
-                  <Text style={styles.metricLabel}>Punctuality</Text>
-                  {renderGauge(officer.punctuality, officer.punctuality > 90 ? '#4CAF50' : '#FF9800')}
+                <View style={styles.metricsRow}>
+                  {renderGauge('Punctuality', officer.punctuality)}
+                  {renderGauge('Completion Rate', officer.completion)}
                 </View>
-                <View style={styles.metricCol}>
-                  <Text style={styles.metricLabel}>Completion Rate</Text>
-                  {renderGauge(officer.completion, officer.completion > 95 ? '#4CAF50' : '#FF9800')}
-                </View>
-              </View>
 
-              <View style={styles.statsRow}>
-                <View style={styles.statBox}>
-                  <Text style={styles.statValue}>{officer.avgTime}</Text>
-                  <Text style={styles.statLabel}>Avg Time/Checkpoint</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={[styles.statValue, { color: theme.colors.error }]}>{officer.incidents}</Text>
-                  <Text style={styles.statLabel}>Incidents Reported</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statValue}>{officer.observations}</Text>
-                  <Text style={styles.statLabel}>Observations</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={[styles.statValue, { color: officer.missed > 0 ? theme.colors.error : '#4CAF50' }]}>{officer.missed}</Text>
-                  <Text style={styles.statLabel}>Missed Patrols</Text>
+                <View style={styles.statsRow}>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statValue}>{officer.avgTime}</Text>
+                    <Text style={styles.statLabel}>Avg Time/Checkpoint</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={[styles.statValue, { color: theme.colors.error }]}>{officer.incidents}</Text>
+                    <Text style={styles.statLabel}>Incidents Reported</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statValue}>{officer.observations}</Text>
+                    <Text style={styles.statLabel}>Observations</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={[styles.statValue, { color: officer.missed > 0 ? theme.colors.error : '#4CAF50' }]}>{officer.missed}</Text>
+                    <Text style={styles.statLabel}>Missed Patrols</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </DirectorLayout>
   );

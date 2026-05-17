@@ -39,3 +39,13 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Database & Secrets (DO NOT COMMIT)
+.env
+.env.*
+db_init.sql
+*.sql
+*.log
+
+# Scratch scripts
+test_*.js

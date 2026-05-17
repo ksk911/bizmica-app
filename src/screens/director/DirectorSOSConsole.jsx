@@ -1,19 +1,28 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { theme } from './ExecutiveLoginPortal';
 import DirectorLayout from '../../components/director/DirectorLayout';
+import { API_BASE_URL } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 
-const MOCK_SOS = [
-  { id: 'SOS-8891', officer: 'Rajesh Kumar', site: 'New Delhi Zone 7', time: '10:32 AM', status: 'open', location: 'Gate 4', timeSince: '2 hours ago' },
-  { id: 'SOS-8890', officer: 'Priya Sharma', site: 'Mumbai Sector A', time: '09:15 AM', status: 'acknowledged', location: 'Basement Parking', timeSince: '3 hours ago', responseTime: '4 mins' },
-  { id: 'SOS-8885', officer: 'Amit Patel', site: 'Bangalore Campus', time: 'Yesterday', status: 'investigating', location: 'Server Room', timeSince: '1 day ago', responseTime: '2 mins' },
-  { id: 'SOS-8872', officer: 'Sneha Reddy', site: 'Chennai Zone', time: '05 May 2026', status: 'resolved', location: 'Perimeter Wall', timeSince: '12 days ago', responseTime: '7 mins' },
-];
-
 const DirectorSOSConsole = ({ navigation }) => {
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/director/sos/all`)
+      .then(res => res.json())
+      .then(json => {
+        setTickets(json);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch SOS tickets:', err);
+        setLoading(false);
+      });
+  }, []);
 
   const renderBadge = (status) => {
     switch (status) {
@@ -72,28 +81,32 @@ const DirectorSOSConsole = ({ navigation }) => {
             <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>ACTIONS</Text>
           </View>
 
-          {MOCK_SOS.filter(s => filterStatus === 'all' || s.status === filterStatus).map(ticket => (
-            <View key={ticket.id} style={styles.tableRow}>
-              <Text style={[styles.td, { flex: 1, fontWeight: '700', color: theme.colors.primary }]}>{ticket.id}</Text>
-              <Text style={[styles.td, { flex: 1.5 }]}>{ticket.officer}</Text>
-              <View style={{ flex: 2 }}>
-                <Text style={styles.tdData}>{ticket.site}</Text>
-                <Text style={styles.tdSub}>{ticket.location}</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
+          ) : (
+            tickets.filter(s => filterStatus === 'all' || s.status === filterStatus).map(ticket => (
+              <View key={ticket.id} style={styles.tableRow}>
+                <Text style={[styles.td, { flex: 1, fontWeight: '700', color: theme.colors.primary }]}>{ticket.id}</Text>
+                <Text style={[styles.td, { flex: 1.5 }]}>{ticket.officer}</Text>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.tdData}>{ticket.site}</Text>
+                  <Text style={styles.tdSub}>{ticket.location}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.tdData}>{ticket.time}</Text>
+                  <Text style={styles.tdSub}>{ticket.timeSince}</Text>
+                </View>
+                <View style={{ flex: 1.5, alignItems: 'flex-start' }}>
+                  {renderBadge(ticket.status)}
+                  {ticket.responseTime && <Text style={styles.tdSub}>Response: {ticket.responseTime}</Text>}
+                </View>
+                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+                  <TouchableOpacity style={styles.actionBtnSecondary}><Text style={styles.actionBtnTextSecondary}>View</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.actionBtnSecondary}><Text style={styles.actionBtnTextSecondary}>PDF</Text></TouchableOpacity>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.tdData}>{ticket.time}</Text>
-                <Text style={styles.tdSub}>{ticket.timeSince}</Text>
-              </View>
-              <View style={{ flex: 1.5, alignItems: 'flex-start' }}>
-                {renderBadge(ticket.status)}
-                {ticket.responseTime && <Text style={styles.tdSub}>Response: {ticket.responseTime}</Text>}
-              </View>
-              <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-                <TouchableOpacity style={styles.actionBtnSecondary}><Text style={styles.actionBtnTextSecondary}>View</Text></TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtnSecondary}><Text style={styles.actionBtnTextSecondary}>PDF</Text></TouchableOpacity>
-              </View>
-            </View>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
     </DirectorLayout>

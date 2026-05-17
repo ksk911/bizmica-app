@@ -1,33 +1,38 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import { theme } from './ExecutiveLoginPortal';
+import { API_BASE_URL } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 
-const KPI_DATA = {
-  activeSites: 142,
-  activeOfficers: 847,
-  completionRate: 94.5,
-  missedPatrols: 12,
-  openIncidents: 23,
-  closedIncidents: 18,
-  topSites: [
-    { id: '1', name: 'New Delhi HQ', completion: 98, incidents: 2, score: 96 },
-    { id: '2', name: 'Chennai Tech Park', completion: 97, incidents: 1, score: 95 },
-    { id: '3', name: 'Mumbai Financial', completion: 96, incidents: 3, score: 94 },
-    { id: '4', name: 'Bangalore Campus A', completion: 95, incidents: 2, score: 92 },
-    { id: '5', name: 'Pune IT Zone', completion: 94, incidents: 4, score: 90 },
-  ],
-  bottomSites: [
-    { id: '6', name: 'Kolkata Dockyard', completion: 72, critical: 5, action: 'Review Security Roster' },
-    { id: '7', name: 'Ahmedabad Mill', completion: 76, critical: 3, action: 'Equipment Audit Required' },
-    { id: '8', name: 'Hyderabad Sector 4', completion: 79, critical: 2, action: 'Increase Patrol Frequency' },
-    { id: '9', name: 'Noida Warehouse B', completion: 81, critical: 4, action: 'Investigate Late Shifts' },
-    { id: '10', name: 'Gurgaon Tower', completion: 82, critical: 1, action: 'Checklist Compliance Warning' },
-  ]
-};
-
 const DirectorOverview = ({ navigation }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/director/dashboard/kpi`)
+      .then(res => res.json())
+      .then(json => {
+        setData(json);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch KPI data:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  const kpi = data || {
+    activeSites: 0, activeOfficers: 0, completionRate: 0, missedPatrols: 0, openIncidents: 0, closedIncidents: 0, topSites: [], bottomSites: []
+  };
   const renderMetricCard = (title, value, color) => (
     <View style={[styles.metricCard, { borderLeftColor: color }]}>
       <Text style={styles.metricTitle}>{title}</Text>
@@ -44,12 +49,12 @@ const DirectorOverview = ({ navigation }) => {
 
       {/* Top Metrics Grid */}
       <View style={styles.metricsGrid}>
-        {renderMetricCard('Active Sites', KPI_DATA.activeSites, theme.colors.primary)}
-        {renderMetricCard('Active Officers', KPI_DATA.activeOfficers, theme.colors.primaryContainer)}
-        {renderMetricCard('Completion Rate', `${KPI_DATA.completionRate}%`, '#4CAF50')}
-        {renderMetricCard('Missed Patrols', KPI_DATA.missedPatrols, '#FF9800')}
-        {renderMetricCard('Open Incidents', KPI_DATA.openIncidents, theme.colors.error)}
-        {renderMetricCard('Closed Incidents', KPI_DATA.closedIncidents, '#4CAF50')}
+        {renderMetricCard('Active Sites', kpi.activeSites, theme.colors.primary)}
+        {renderMetricCard('Active Officers', kpi.activeOfficers, theme.colors.primaryContainer)}
+        {renderMetricCard('Completion Rate', `${kpi.completionRate}%`, '#4CAF50')}
+        {renderMetricCard('Missed Patrols', kpi.missedPatrols, '#FF9800')}
+        {renderMetricCard('Open Incidents', kpi.openIncidents, theme.colors.error)}
+        {renderMetricCard('Closed Incidents', kpi.closedIncidents, '#4CAF50')}
       </View>
 
       <View style={styles.row}>
@@ -62,7 +67,7 @@ const DirectorOverview = ({ navigation }) => {
             <Text style={[styles.th, { flex: 1 }]}>INCIDENTS</Text>
             <Text style={[styles.th, { flex: 1 }]}>SCORE</Text>
           </View>
-          {KPI_DATA.topSites.map(site => (
+          {kpi.topSites.map(site => (
             <View key={site.id} style={styles.tableRow}>
               <Text style={[styles.td, { flex: 2, fontWeight: '600' }]}>{site.name}</Text>
               <Text style={[styles.td, { flex: 1, color: '#4CAF50' }]}>{site.completion}%</Text>
@@ -81,7 +86,7 @@ const DirectorOverview = ({ navigation }) => {
             <Text style={[styles.th, { flex: 1 }]}>CRITICAL</Text>
             <Text style={[styles.th, { flex: 2 }]}>RECOMMENDED ACTION</Text>
           </View>
-          {KPI_DATA.bottomSites.map(site => (
+          {kpi.bottomSites.map(site => (
             <View key={site.id} style={styles.tableRow}>
               <Text style={[styles.td, { flex: 2, fontWeight: '600' }]}>{site.name}</Text>
               <Text style={[styles.td, { flex: 1, color: theme.colors.error }]}>{site.completion}%</Text>
@@ -112,6 +117,7 @@ const DirectorOverview = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   mainContent: { flex: 1, backgroundColor: theme.colors.background },
   contentContainer: { paddingTop: 32, paddingHorizontal: width > 1024 ? 64 : 24, paddingBottom: 64 },
   header: { marginBottom: 32 },

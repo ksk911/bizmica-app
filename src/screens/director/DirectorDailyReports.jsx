@@ -1,18 +1,28 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { theme } from './ExecutiveLoginPortal';
 import DirectorLayout from '../../components/director/DirectorLayout';
+import { API_BASE_URL } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 
-const MOCK_REPORTS = [
-  { id: '1', date: '2026-05-16', officer: 'Rajesh Kumar', site: 'New Delhi HQ', completion: 100, incidents: 0, observations: 2 },
-  { id: '2', date: '2026-05-16', officer: 'Priya Sharma', site: 'Mumbai Sector A', completion: 94, incidents: 1, observations: 0 },
-  { id: '3', date: '2026-05-15', officer: 'Amit Patel', site: 'Bangalore Campus', completion: 88, incidents: 0, observations: 4 },
-  { id: '4', date: '2026-05-15', officer: 'Sneha Reddy', site: 'Chennai Zone', completion: 100, incidents: 2, observations: 1 },
-];
-
 const DirectorDailyReports = ({ navigation }) => {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/director/reports/daily-patrol`)
+      .then(res => res.json())
+      .then(json => {
+        setReports(json);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch daily reports:', err);
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <DirectorLayout navigation={navigation} activeRoute="DirectorDailyReports">
       <ScrollView style={styles.mainContent} contentContainerStyle={styles.contentContainer}>
@@ -53,28 +63,32 @@ const DirectorDailyReports = ({ navigation }) => {
           <View style={styles.tableHeader}>
             <Text style={[styles.th, { flex: 1 }]}>DATE</Text>
             <Text style={[styles.th, { flex: 1.5 }]}>OFFICER</Text>
-            <Text style={[styles.th, { flex: 2 }]}>SITE</Text>
+            <Text style={[styles.th, { flex: 1.5 }]}>SITE</Text>
             <Text style={[styles.th, { flex: 1 }]}>COMPLETION</Text>
             <Text style={[styles.th, { flex: 1 }]}>INCIDENTS</Text>
             <Text style={[styles.th, { flex: 1 }]}>OBSERVATIONS</Text>
-            <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>REPORT</Text>
+            <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>EXPORT</Text>
           </View>
 
-          {MOCK_REPORTS.map(report => (
-            <View key={report.id} style={styles.tableRow}>
-              <Text style={[styles.td, { flex: 1 }]}>{report.date}</Text>
-              <Text style={[styles.td, { flex: 1.5, fontWeight: '600' }]}>{report.officer}</Text>
-              <Text style={[styles.td, { flex: 2 }]}>{report.site}</Text>
-              <Text style={[styles.td, { flex: 1, color: report.completion === 100 ? '#4CAF50' : '#FF9800', fontWeight: '600' }]}>{report.completion}%</Text>
-              <Text style={[styles.td, { flex: 1, color: report.incidents > 0 ? theme.colors.error : theme.colors.onSurfaceVariant }]}>{report.incidents}</Text>
-              <Text style={[styles.td, { flex: 1 }]}>{report.observations}</Text>
-              <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                <TouchableOpacity style={styles.downloadBtn}>
-                  <Text style={styles.downloadBtnText}>PDF 📄</Text>
-                </TouchableOpacity>
+          {loading ? (
+            <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
+          ) : (
+            reports.map(report => (
+              <View key={report.id} style={styles.tableRow}>
+                <Text style={[styles.td, { flex: 1 }]}>{report.date}</Text>
+                <Text style={[styles.td, { flex: 1.5, fontWeight: '600' }]}>{report.officer}</Text>
+                <Text style={[styles.td, { flex: 1.5 }]}>{report.site}</Text>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.td, { color: report.completion < 90 ? theme.colors.error : '#4CAF50', fontWeight: '700' }]}>{report.completion}%</Text>
+                </View>
+                <Text style={[styles.td, { flex: 1, color: report.incidents > 0 ? theme.colors.error : theme.colors.onSurfaceVariant }]}>{report.incidents}</Text>
+                <Text style={[styles.td, { flex: 1 }]}>{report.observations}</Text>
+                <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+                  <TouchableOpacity style={styles.pdfButton}><Text style={styles.pdfButtonText}>📄 View</Text></TouchableOpacity>
+                </View>
               </View>
-            </View>
-          ))}
+            ))
+          )}
           
           <View style={styles.pagination}>
             <Text style={styles.paginationText}>Showing 1-4 of 1,248 reports</Text>
@@ -119,8 +133,8 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: 'row', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.surfaceContainerLow, alignItems: 'center' },
   td: { ...theme.typography.bodyMd, color: theme.colors.onSurfaceVariant },
   
-  downloadBtn: { backgroundColor: theme.colors.surfaceContainerHigh, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
-  downloadBtnText: { color: theme.colors.primaryContainer, fontSize: 12, fontWeight: '700' },
+  pdfButton: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: theme.colors.surfaceContainerHigh, borderRadius: 6 },
+  pdfButtonText: { ...theme.typography.bodySm, color: theme.colors.primary, fontWeight: '700' },
 
   pagination: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, borderTopWidth: 1, borderTopColor: theme.colors.outlineVariant, paddingTop: 16 },
   paginationText: { ...theme.typography.bodySm, color: theme.colors.outlineVariant },

@@ -1,22 +1,30 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { theme } from './ExecutiveLoginPortal';
 import DirectorLayout from '../../components/director/DirectorLayout';
+import { API_BASE_URL } from '../../config/api';
 
 const { width } = Dimensions.get('window');
-
-const MOCK_ALERTS = [
-  { id: '1', time: '10:45 AM', type: 'GPS Tamper', officer: 'Rajesh Kumar', site: 'New Delhi HQ', details: 'Location tracking disabled manually', status: 'critical', read: false },
-  { id: '2', time: '09:30 AM', type: 'Missed Patrol', officer: 'Priya Sharma', site: 'Mumbai Sector A', details: 'Failed to start patrol within 15m grace period', status: 'warning', read: false },
-  { id: '3', time: 'Yesterday', type: 'Mock Location', officer: 'Amit Patel', site: 'Bangalore Campus', details: 'Detected mock location app usage', status: 'critical', read: true },
-  { id: '4', time: 'Yesterday', type: 'Late Shift Start', officer: 'Sneha Reddy', site: 'Chennai Zone', details: 'Clocked in 45 mins late', status: 'warning', read: true },
-  { id: '5', time: '2 Days ago', type: 'Incomplete Checklist', officer: 'Vikram Singh', site: 'Pune IT Zone', details: 'Missing 3 mandatory fields', status: 'info', read: true },
-];
 
 const FILTER_TYPES = ['All', 'Missed Patrols', 'Late Shift Starts', 'Incomplete Checklists', 'GPS Tamper', 'Low Battery', 'Mock Location'];
 
 const DirectorAlertLogs = ({ navigation }) => {
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/director/alerts/exceptions`)
+      .then(res => res.json())
+      .then(json => {
+        setAlerts(json);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch alerts:', err);
+        setLoading(false);
+      });
+  }, []);
 
   const renderSeverityBadge = (status) => {
     switch (status) {
@@ -78,16 +86,20 @@ const DirectorAlertLogs = ({ navigation }) => {
             <Text style={[styles.th, { flex: 1 }]}>SEVERITY</Text>
           </View>
 
-          {MOCK_ALERTS.map(alert => (
-            <View key={alert.id} style={[styles.tableRow, !alert.read && styles.tableRowUnread]}>
-              <Text style={[styles.td, { flex: 1 }]}>{alert.time}</Text>
-              <Text style={[styles.td, { flex: 1.5, fontWeight: '600' }]}>{alert.type}</Text>
-              <Text style={[styles.td, { flex: 1.5 }]}>{alert.officer}</Text>
-              <Text style={[styles.td, { flex: 1.5 }]}>{alert.site}</Text>
-              <Text style={[styles.td, { flex: 2, fontSize: 13 }]}>{alert.details}</Text>
-              <View style={{ flex: 1 }}>{renderSeverityBadge(alert.status)}</View>
-            </View>
-          ))}
+          {loading ? (
+            <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
+          ) : (
+            alerts.filter(a => activeFilter === 'All' || a.type === activeFilter || a.type.includes(activeFilter.replace(/s$/, ''))).map(alert => (
+              <View key={alert.id} style={[styles.tableRow, !alert.read && styles.tableRowUnread]}>
+                <Text style={[styles.td, { flex: 1 }]}>{alert.time}</Text>
+                <Text style={[styles.td, { flex: 1.5, fontWeight: '600' }]}>{alert.type}</Text>
+                <Text style={[styles.td, { flex: 1.5 }]}>{alert.officer}</Text>
+                <Text style={[styles.td, { flex: 1.5 }]}>{alert.site}</Text>
+                <Text style={[styles.td, { flex: 2, fontSize: 13 }]}>{alert.details}</Text>
+                <View style={{ flex: 1 }}>{renderSeverityBadge(alert.status)}</View>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
     </DirectorLayout>

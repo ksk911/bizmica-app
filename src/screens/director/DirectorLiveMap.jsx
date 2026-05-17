@@ -1,22 +1,31 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Switch, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Switch, Platform, ActivityIndicator } from 'react-native';
 import { theme } from './ExecutiveLoginPortal';
 import DirectorLayout from '../../components/director/DirectorLayout';
+import { API_BASE_URL } from '../../config/api';
 
 const { width, height } = Dimensions.get('window');
 
-const MOCK_OFFICERS = [
-  { id: '1', name: 'Rajesh Kumar', role: 'Field Officer', status: 'active', sosActive: false, site: 'New Delhi HQ', lastUpdate: '2 mins ago' },
-  { id: '2', name: 'Priya Sharma', role: 'Supervisor', status: 'inactive', sosActive: false, site: 'Mumbai Sector A', lastUpdate: '1 hr ago' },
-  { id: '3', name: 'Amit Patel', role: 'Field Officer', status: 'active', sosActive: true, site: 'Bangalore Campus', lastUpdate: 'Just now' },
-  { id: '4', name: 'Sneha Reddy', role: 'Area Manager', status: 'active', sosActive: false, site: 'Chennai Zone', lastUpdate: '5 mins ago' },
-];
-
 const DirectorLiveMap = ({ navigation }) => {
+  const [officers, setOfficers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [showSOSOnly, setShowSOSOnly] = useState(false);
 
-  const filteredOfficers = MOCK_OFFICERS.filter(o => {
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/director/map/live-officers`)
+      .then(res => res.json())
+      .then(json => {
+        setOfficers(json);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch map data:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  const filteredOfficers = officers.filter(o => {
     if (showActiveOnly && o.status !== 'active') return false;
     if (showSOSOnly && !o.sosActive) return false;
     return true;
@@ -47,12 +56,16 @@ const DirectorLiveMap = ({ navigation }) => {
         </View>
 
         <View style={styles.mapContainer}>
-          <Text style={styles.mapPlaceholderText}>[ Interactive Map Placeholder ]</Text>
-          <Text style={styles.mapSubText}>Integrate with react-native-maps or leaflet here</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          ) : (
+            <>
+              <Text style={styles.mapPlaceholderText}>[ Interactive Map Placeholder ]</Text>
+              <Text style={styles.mapSubText}>Integrate with react-native-maps or leaflet here</Text>
 
-          {/* Mock Markers rendered randomly over the map area */}
-          <View style={styles.markersContainer}>
-            {filteredOfficers.map((officer, index) => (
+              {/* Mock Markers rendered randomly over the map area */}
+              <View style={styles.markersContainer}>
+                {filteredOfficers.map((officer, index) => (
               <View 
                 key={officer.id} 
                 style={[
@@ -73,8 +86,10 @@ const DirectorLiveMap = ({ navigation }) => {
               </View>
             ))}
           </View>
-        </View>
-      </View>
+        </>
+      )}
+    </View>
+  </View>
     </DirectorLayout>
   );
 };

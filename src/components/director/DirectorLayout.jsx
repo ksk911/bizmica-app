@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,6 +14,7 @@ import {
 
 import { theme } from '../../screens/director/ExecutiveLoginPortal';
 import DirectorSidebar from './DirectorSidebar';
+import { API_BASE_URL } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 
@@ -43,9 +44,22 @@ export default function DirectorLayout({
   navigation,
   activeRoute,
 }) {
+  const [escalations, setEscalations] = useState([]);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/director/escalations`)
+      .then(res => res.json())
+      .then(json => {
+        setEscalations(json.filter(e => !e.read));
+      })
+      .catch(err => {
+        console.error('Failed to fetch escalations:', err);
+      });
+  }, []);
+
+  const hasEscalations = escalations.length > 0;
   const unreadCount = MOCK_ESCALATIONS.filter(
     n => !n.read,
   ).length;
@@ -151,13 +165,16 @@ export default function DirectorLayout({
         <View style={styles.mainArea}>
           {renderTopBar()}
           
-          {unreadCount > 0 && (
+          {hasEscalations && (
             <View style={styles.escalationBanner}>
               <Text style={styles.escalationBannerText}>
-                ⚠️ {unreadCount} new escalations require your attention
+                🚨 {escalations.length} Unacknowledged Escalations Require Your Attention.
               </Text>
-              <TouchableOpacity onPress={() => setShowNotifications(true)}>
-                <Text style={styles.escalationBannerLink}>View Escalations</Text>
+              <TouchableOpacity 
+                style={styles.escalationBannerBtn}
+                onPress={() => navigation.navigate('DirectorProfile')}
+              >
+                <Text style={styles.escalationBannerBtnText}>Review Now</Text>
               </TouchableOpacity>
             </View>
           )}
