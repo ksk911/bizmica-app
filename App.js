@@ -19,6 +19,11 @@ import DirectorOfficerBenchmarking from './src/screens/director/DirectorOfficerB
 import DirectorShiftEditor from './src/screens/director/DirectorShiftEditor';
 import DirectorReportingModals from './src/screens/director/DirectorReportingModals';
 import DirectorProfile from './src/screens/director/DirectorProfile';
+import DirectorLiveMap from './src/screens/director/DirectorLiveMap';
+import DirectorSOSConsole from './src/screens/director/DirectorSOSConsole';
+import DirectorDailyReports from './src/screens/director/DirectorDailyReports';
+import DirectorOfficerPerformance from './src/screens/director/DirectorOfficerPerformance';
+import DirectorHistoricalTrends from './src/screens/director/DirectorHistoricalTrends';
 
 // Supervisor Screens (For Testing)
 import SupervisorNavigator from './src/screens/supervisor/SupervisorNavigator';
@@ -47,6 +52,11 @@ export default function App() {
         <Stack.Screen name="ShiftEditor" component={DirectorShiftEditor} />
         <Stack.Screen name="ReportingModals" component={DirectorReportingModals} />
         <Stack.Screen name="DirectorProfile" component={DirectorProfile} />
+        <Stack.Screen name="DirectorLiveMap" component={DirectorLiveMap} />
+        <Stack.Screen name="DirectorSOSConsole" component={DirectorSOSConsole} />
+        <Stack.Screen name="DirectorDailyReports" component={DirectorDailyReports} />
+        <Stack.Screen name="DirectorOfficerPerformance" component={DirectorOfficerPerformance} />
+        <Stack.Screen name="DirectorHistoricalTrends" component={DirectorHistoricalTrends} />
 
         {/* Area Manager App Routes */}
         <Stack.Screen name="Login" component={AreaManagerLogin} />

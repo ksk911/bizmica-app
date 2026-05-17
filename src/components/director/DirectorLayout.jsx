@@ -17,28 +17,25 @@ import DirectorSidebar from './DirectorSidebar';
 
 const { width } = Dimensions.get('window');
 
-const MOCK_NOTIFICATIONS = [
+const MOCK_ESCALATIONS = [
   {
     id: '1',
-    title: 'New incident reported',
-    message: 'Perimeter breach in New Delhi Zone',
-    time: '5 mins ago',
+    incident: 'Perimeter breach - Delhi',
+    escalatedAt: '2 hours ago',
+    timeSince: '6h 15m',
+    reason: 'Not closed within 4h',
+    status: '⚠️ Unacknowledged',
     read: false,
   },
   {
     id: '2',
-    title: 'SOS Alert',
-    message: 'Officer Rajesh Kumar sent SOS',
-    time: '15 mins ago',
+    incident: 'Camera offline - Mumbai',
+    escalatedAt: '1 hour ago',
+    timeSince: '5h 30m',
+    reason: 'Critical zone offline > 2h',
+    status: '⚠️ Unacknowledged',
     read: false,
-  },
-  {
-    id: '3',
-    title: 'Report Generated',
-    message: 'Daily patrol report ready',
-    time: '1 hour ago',
-    read: true,
-  },
+  }
 ];
 
 export default function DirectorLayout({
@@ -49,7 +46,7 @@ export default function DirectorLayout({
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const unreadCount = MOCK_NOTIFICATIONS.filter(
+  const unreadCount = MOCK_ESCALATIONS.filter(
     n => !n.read,
   ).length;
 
@@ -73,21 +70,24 @@ export default function DirectorLayout({
       </View>
 
       <View style={styles.topBarRight}>
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('DirectorHistoricalTrends')}>
+          <Text style={styles.iconButtonText}>📈</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.iconButton}
-          onPress={() =>
-            setShowNotifications(!showNotifications)
-          }
+          onPress={() => setShowNotifications(!showNotifications)}
         >
           <Text style={styles.iconButtonText}>🔔</Text>
-
           {unreadCount > 0 && (
             <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>
-                {unreadCount}
-              </Text>
+              <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
             </View>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('DirectorProfile')}>
+          <Text style={styles.iconButtonText}>👤</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -96,139 +96,39 @@ export default function DirectorLayout({
   const renderBottomNav = () => (
     <View style={styles.bottomNav}>
       {/* Dashboard */}
-      <TouchableOpacity
-        style={[
-          styles.navItem,
-          activeRoute === 'DirectorDashboard' &&
-            styles.activeNavItem,
-        ]}
-        onPress={() =>
-          navigation.navigate('DirectorDashboard')
-        }
-      >
-        <Text
-          style={[
-            styles.navIcon,
-            activeRoute === 'DirectorDashboard' &&
-              styles.activeNavIcon,
-          ]}
-        >
-          📊
-        </Text>
-
-        <Text
-          style={[
-            styles.navLabel,
-            activeRoute === 'DirectorDashboard' &&
-              styles.activeNavLabel,
-          ]}
-        >
-          Dashboard
-        </Text>
+      <TouchableOpacity style={[styles.navItem, activeRoute === 'DirectorDashboard' && styles.activeNavItem]} onPress={() => navigation.navigate('DirectorDashboard')}>
+        <Text style={[styles.navIcon, activeRoute === 'DirectorDashboard' && styles.activeNavIcon]}>📊</Text>
+        <Text style={[styles.navLabel, activeRoute === 'DirectorDashboard' && styles.activeNavLabel]}>Dashboard</Text>
       </TouchableOpacity>
 
-      {/* Analytics */}
-      <TouchableOpacity
-        style={[
-          styles.navItem,
-          activeRoute === 'DirectorKPI' &&
-            styles.activeNavItem,
-        ]}
-        onPress={() =>
-          navigation.navigate('DirectorKPI')
-        }
-      >
-        <Text
-          style={[
-            styles.navIcon,
-            activeRoute === 'DirectorKPI' &&
-              styles.activeNavIcon,
-          ]}
-        >
-          📈
-        </Text>
+      {/* Live Map */}
+      <TouchableOpacity style={[styles.navItem, activeRoute === 'DirectorLiveMap' && styles.activeNavItem]} onPress={() => navigation.navigate('DirectorLiveMap')}>
+        <Text style={[styles.navIcon, activeRoute === 'DirectorLiveMap' && styles.activeNavIcon]}>🗺️</Text>
+        <Text style={[styles.navLabel, activeRoute === 'DirectorLiveMap' && styles.activeNavLabel]}>Live Map</Text>
+      </TouchableOpacity>
 
-        <Text
-          style={[
-            styles.navLabel,
-            activeRoute === 'DirectorKPI' &&
-              styles.activeNavLabel,
-          ]}
-        >
-          Analytics
-        </Text>
+      {/* SOS Console */}
+      <TouchableOpacity style={[styles.navItem, activeRoute === 'DirectorSOSConsole' && styles.activeNavItem]} onPress={() => navigation.navigate('DirectorSOSConsole')}>
+        <Text style={[styles.navIcon, activeRoute === 'DirectorSOSConsole' && styles.activeNavIcon]}>🆘</Text>
+        <Text style={[styles.navLabel, activeRoute === 'DirectorSOSConsole' && styles.activeNavLabel]}>SOS Console</Text>
       </TouchableOpacity>
 
       {/* Alerts */}
-      <TouchableOpacity
-        style={[
-          styles.navItem,
-          activeRoute === 'AlertLogs' &&
-            styles.activeNavItem,
-        ]}
-        onPress={() =>
-          navigation.navigate('AlertLogs')
-        }
-      >
-        <Text
-          style={[
-            styles.navIcon,
-            activeRoute === 'AlertLogs' &&
-              styles.activeNavIcon,
-          ]}
-        >
-          ⚠️
-        </Text>
-
-        <Text
-          style={[
-            styles.navLabel,
-            activeRoute === 'AlertLogs' &&
-              styles.activeNavLabel,
-          ]}
-        >
-          Alerts
-        </Text>
-
-        {unreadCount > 0 && (
-          <View style={styles.navBadge}>
-            <Text style={styles.navBadgeText}>
-              {unreadCount}
-            </Text>
-          </View>
-        )}
+      <TouchableOpacity style={[styles.navItem, activeRoute === 'AlertLogs' && styles.activeNavItem]} onPress={() => navigation.navigate('AlertLogs')}>
+        <Text style={[styles.navIcon, activeRoute === 'AlertLogs' && styles.activeNavIcon]}>⚠️</Text>
+        <Text style={[styles.navLabel, activeRoute === 'AlertLogs' && styles.activeNavLabel]}>Alerts</Text>
       </TouchableOpacity>
 
-      {/* Profile */}
-      <TouchableOpacity
-        style={[
-          styles.navItem,
-          activeRoute === 'DirectorProfile' &&
-            styles.activeNavItem,
-        ]}
-        onPress={() =>
-          navigation.navigate('DirectorProfile')
-        }
-      >
-        <Text
-          style={[
-            styles.navIcon,
-            activeRoute === 'DirectorProfile' &&
-              styles.activeNavIcon,
-          ]}
-        >
-          👤
-        </Text>
+      {/* Reports */}
+      <TouchableOpacity style={[styles.navItem, activeRoute === 'DirectorDailyReports' && styles.activeNavItem]} onPress={() => navigation.navigate('DirectorDailyReports')}>
+        <Text style={[styles.navIcon, activeRoute === 'DirectorDailyReports' && styles.activeNavIcon]}>📋</Text>
+        <Text style={[styles.navLabel, activeRoute === 'DirectorDailyReports' && styles.activeNavLabel]}>Reports</Text>
+      </TouchableOpacity>
 
-        <Text
-          style={[
-            styles.navLabel,
-            activeRoute === 'DirectorProfile' &&
-              styles.activeNavLabel,
-          ]}
-        >
-          Profile
-        </Text>
+      {/* Performance */}
+      <TouchableOpacity style={[styles.navItem, activeRoute === 'DirectorOfficerPerformance' && styles.activeNavItem]} onPress={() => navigation.navigate('DirectorOfficerPerformance')}>
+        <Text style={[styles.navIcon, activeRoute === 'DirectorOfficerPerformance' && styles.activeNavIcon]}>🏆</Text>
+        <Text style={[styles.navLabel, activeRoute === 'DirectorOfficerPerformance' && styles.activeNavLabel]}>Performance</Text>
       </TouchableOpacity>
     </View>
   );
@@ -250,6 +150,17 @@ export default function DirectorLayout({
 
         <View style={styles.mainArea}>
           {renderTopBar()}
+          
+          {unreadCount > 0 && (
+            <View style={styles.escalationBanner}>
+              <Text style={styles.escalationBannerText}>
+                ⚠️ {unreadCount} new escalations require your attention
+              </Text>
+              <TouchableOpacity onPress={() => setShowNotifications(true)}>
+                <Text style={styles.escalationBannerLink}>View Escalations</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.contentContainer}>
             {children}
@@ -311,11 +222,11 @@ export default function DirectorLayout({
 
           <View style={styles.notificationsDropdown}>
             <Text style={styles.notificationsTitle}>
-              Notifications
+              Escalation Alerts
             </Text>
 
             <FlatList
-              data={MOCK_NOTIFICATIONS}
+              data={MOCK_ESCALATIONS}
               keyExtractor={item => item.id}
               renderItem={({ item }) => (
                 <View
@@ -325,29 +236,20 @@ export default function DirectorLayout({
                       styles.unreadNotification,
                   ]}
                 >
-                  <Text
-                    style={
-                      styles.dropdownNotificationTitle
-                    }
-                  >
-                    {item.title}
+                  <Text style={styles.dropdownNotificationTitle}>
+                    {item.incident}
                   </Text>
-
-                  <Text
-                    style={
-                      styles.dropdownNotificationMessage
-                    }
-                  >
-                    {item.message}
+                  <Text style={styles.dropdownNotificationMessage}>
+                    Reason: {item.reason}
                   </Text>
-
-                  <Text
-                    style={
-                      styles.dropdownNotificationTime
-                    }
-                  >
-                    {item.time}
+                  <Text style={styles.dropdownNotificationTime}>
+                    {item.timeSince} • {item.status}
                   </Text>
+                  {!item.read && (
+                    <TouchableOpacity style={styles.ackButton}>
+                      <Text style={styles.ackButtonText}>Acknowledge</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
               style={styles.notificationsList}
@@ -376,6 +278,27 @@ const styles = StyleSheet.create({
 
   mainArea: {
     flex: 1,
+  },
+
+  escalationBanner: {
+    backgroundColor: '#fff3cd',
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ffeeba',
+  },
+  escalationBannerText: {
+    color: '#856404',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  escalationBannerLink: {
+    color: '#856404',
+    textDecorationLine: 'underline',
+    fontWeight: '700',
+    fontSize: 14,
   },
 
   contentContainer: {
@@ -743,11 +666,23 @@ const styles = StyleSheet.create({
 
   dropdownNotificationTime: {
     ...theme.typography.bodySm,
-
     fontSize: 11,
-
-    color: theme.colors.outline,
-
+    color: theme.colors.error,
     marginTop: 4,
+    fontWeight: '600',
+  },
+
+  ackButton: {
+    marginTop: 8,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  ackButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
