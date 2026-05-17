@@ -18,6 +18,7 @@ import DirectorSiteAllocation from './src/screens/director/DirectorSiteAllocatio
 import DirectorOfficerBenchmarking from './src/screens/director/DirectorOfficerBenchmarking';
 import DirectorShiftEditor from './src/screens/director/DirectorShiftEditor';
 import DirectorReportingModals from './src/screens/director/DirectorReportingModals';
+import DirectorProfile from './src/screens/director/DirectorProfile';
 
 // Supervisor Screens (For Testing)
 import SupervisorNavigator from './src/screens/supervisor/SupervisorNavigator';
@@ -30,7 +31,7 @@ export default function App() {
   console.log('App component is rendering...');
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="SupervisorSuite" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="ExecutiveLogin" screenOptions={{ headerShown: false }}>
         {/* Supervisor Suite Entry for Testing */}
         <Stack.Screen name="SupervisorSuite" component={SupervisorNavigator} />
         
@@ -45,6 +46,7 @@ export default function App() {
         <Stack.Screen name="OfficerBenchmarking" component={DirectorOfficerBenchmarking} />
         <Stack.Screen name="ShiftEditor" component={DirectorShiftEditor} />
         <Stack.Screen name="ReportingModals" component={DirectorReportingModals} />
+        <Stack.Screen name="DirectorProfile" component={DirectorProfile} />
 
         {/* Area Manager App Routes */}
         <Stack.Screen name="Login" component={AreaManagerLogin} />

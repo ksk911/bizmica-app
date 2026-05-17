@@ -1,16 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Platform, Dimensions, TouchableOpacity } from 'react-native';
 import { theme } from './ExecutiveLoginPortal';
-import DirectorSidebar from '../../components/director/DirectorSidebar';
+import DirectorLayout from '../../components/director/DirectorLayout';
 
 const { width } = Dimensions.get('window');
 
 const DirectorAlertLogs = ({ navigation }) => {
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={[styles.layout, width <= 1024 && styles.layoutMobile]}>
-        <DirectorSidebar navigation={navigation} activeRoute="AlertLogs" />
-
+    <DirectorLayout navigation={navigation} activeRoute="AlertLogs">
         <ScrollView style={styles.mainContent} contentContainerStyle={styles.contentContainer}>
           <View style={styles.header}>
             <Text style={styles.headline}>Alert Logs & Escalations</Text>
@@ -79,8 +76,7 @@ const DirectorAlertLogs = ({ navigation }) => {
             </View>
           </View>
         </ScrollView>
-      </View>
-    </SafeAreaView>
+    </DirectorLayout>
   );
 };
 
