@@ -1,28 +1,75 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensions, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../theme/colors';
 import TopNavBar from '../../components/TopNavBar';
-import SideNavBar from '../../components/SideNavBar';
+const API_BASE = 'http://192.168.1.7:5000';
+const AREA_MANAGER_USER_ID = 2;
 
 export default function RegionalSOSConsole() {
   const { width } = useWindowDimensions();
   const isWide = width > 1024;
-  
-  // Sample Active Emergency Data
-  const [activeAlerts, setActiveAlerts] = useState([
-    { id: 'SOS-092', location: 'Navi Mumbai Hub', officer: 'Rahul M.', time: '2 mins ago', type: 'Medical Emergency', status: 'Requires Dispatch' },
-    { id: 'SOS-091', location: 'Pune Corridor Sector 4', officer: 'Priya K.', time: '14 mins ago', type: 'Security Breach', status: 'En Route' }
-  ]);
+
+  const [activeAlerts, setActiveAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchSOS = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/sos`);
+      const data = await res.json();
+      setActiveAlerts(data);
+    } catch (err) {
+      console.error('SOS fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSOS();
+    // Auto-refresh every 15 seconds to catch new SOS events
+    const interval = setInterval(fetchSOS, 15000);
+    return () => clearInterval(interval);
+  }, [fetchSOS]);
+
+  const handleAcknowledge = async (sosId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/sos/${sosId}/acknowledge`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acknowledged_by: AREA_MANAGER_USER_ID }),
+      });
+      if (res.ok) {
+        Alert.alert('✅ Acknowledged', 'SOS alert has been acknowledged. Response team dispatched.');
+        fetchSOS(); // Refresh the list
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Could not reach server.');
+    }
+  };
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return 'Unknown';
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000 / 60);
+    if (diff < 1) return 'Just now';
+    if (diff < 60) return `${diff} min${diff > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diff / 60)}h ago`;
+  };
+
+
 
   return (
     <View style={styles.container}>
       <TopNavBar />
       <View style={styles.layout}>
-        {isWide && <SideNavBar />}
-
-        <ScrollView style={styles.mainContent} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
+        <ScrollView
+          style={styles.mainContent}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchSOS(); }} />}
+        >
           <View style={[styles.headerRow, !isWide && { flexDirection: 'column', alignItems: 'flex-start', gap: 16 }]}>
             <View>
               <Text style={styles.pageTitle}>Interactive Regional SOS Console</Text>
@@ -36,61 +83,66 @@ export default function RegionalSOSConsole() {
             </View>
           </View>
 
-          {/* Active Alerts List */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>CRITICAL ESCALATIONS</Text>
-            
-            {activeAlerts.map((alert) => (
-              <View key={alert.id} style={styles.alertCard}>
-                <View style={styles.alertHeader}>
-                  <View style={styles.alertBadge}>
-                    <MaterialIcons name="warning" size={16} color={COLORS.onError} />
-                    <Text style={styles.alertBadgeText}>{alert.type}</Text>
-                  </View>
-                  <Text style={styles.alertTime}>{alert.time}</Text>
-                </View>
-                
-                <View style={styles.alertDetailsRow}>
-                  <View style={styles.alertInfoBlock}>
-                    <Text style={styles.infoLabel}>INCIDENT ID</Text>
-                    <Text style={styles.infoValue}>{alert.id}</Text>
-                  </View>
-                  <View style={styles.alertInfoBlock}>
-                    <Text style={styles.infoLabel}>LOCATION</Text>
-                    <Text style={styles.infoValue}>{alert.location}</Text>
-                  </View>
-                  <View style={styles.alertInfoBlock}>
-                    <Text style={styles.infoLabel}>REPORTING OFFICER</Text>
-                    <Text style={styles.infoValue}>{alert.officer}</Text>
-                  </View>
-                  <View style={styles.alertInfoBlock}>
-                    <Text style={styles.infoLabel}>DISPATCH STATUS</Text>
-                    <Text style={[styles.infoValue, { color: alert.status === 'Requires Dispatch' ? COLORS.error : COLORS.secondary }]}>
-                      {alert.status}
-                    </Text>
-                  </View>
-                </View>
-                
-                <View style={styles.cardActions}>
-                  <TouchableOpacity style={styles.resolveBtn}>
-                    <Text style={styles.resolveBtnText}>Acknowledge & Dispatch</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.ghostBtn}>
-                    <Text style={styles.ghostBtnText}>View Full Context</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+            <Text style={styles.sectionTitle}>CRITICAL ESCALATIONS ({activeAlerts.length})</Text>
 
-            {activeAlerts.length === 0 && (
+            {loading ? (
+              <ActivityIndicator size="large" color={COLORS.error} style={{ marginTop: 40 }} />
+            ) : activeAlerts.length === 0 ? (
               <View style={styles.emptyState}>
                 <MaterialIcons name="check-circle-outline" size={48} color={COLORS.secondary} />
                 <Text style={styles.emptyStateTitle}>All Clear</Text>
                 <Text style={styles.emptyStateSub}>No active SOS escalations in the regional network.</Text>
               </View>
+            ) : (
+              activeAlerts.map((alert) => (
+                <View key={alert.id} style={styles.alertCard}>
+                  <View style={styles.alertHeader}>
+                    <View style={styles.alertBadge}>
+                      <MaterialIcons name="warning" size={16} color={COLORS.onError} />
+                      <Text style={styles.alertBadgeText}>{alert.status}</Text>
+                    </View>
+                    <Text style={styles.alertTime}>{formatTime(alert.triggered_at)}</Text>
+                  </View>
+
+                  <View style={styles.alertDetailsRow}>
+                    <View style={styles.alertInfoBlock}>
+                      <Text style={styles.infoLabel}>INCIDENT ID</Text>
+                      <Text style={styles.infoValue}>SOS-{String(alert.id).padStart(3, '0')}</Text>
+                    </View>
+                    <View style={styles.alertInfoBlock}>
+                      <Text style={styles.infoLabel}>LOCATION</Text>
+                      <Text style={styles.infoValue}>{alert.site_name}</Text>
+                    </View>
+                    <View style={styles.alertInfoBlock}>
+                      <Text style={styles.infoLabel}>REPORTING OFFICER</Text>
+                      <Text style={styles.infoValue}>{alert.triggered_by_name}</Text>
+                    </View>
+                    {alert.trigger_latitude && (
+                      <View style={styles.alertInfoBlock}>
+                        <Text style={styles.infoLabel}>GPS COORDS</Text>
+                        <Text style={styles.infoValue}>
+                          {parseFloat(alert.trigger_latitude).toFixed(4)}, {parseFloat(alert.trigger_longitude).toFixed(4)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={[styles.resolveBtn, alert.status !== 'OPEN' && { opacity: 0.5 }]}
+                      onPress={() => alert.status === 'OPEN' && handleAcknowledge(alert.id)}
+                      disabled={alert.status !== 'OPEN'}
+                    >
+                      <Text style={styles.resolveBtnText}>
+                        {alert.status === 'OPEN' ? 'Acknowledge & Dispatch' : `Already ${alert.status}`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
             )}
           </View>
-
         </ScrollView>
       </View>
     </View>

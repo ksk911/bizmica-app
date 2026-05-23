@@ -3,8 +3,6 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensio
 import { MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../theme/colors';
 import TopNavBar from '../../components/TopNavBar';
-import SideNavBar from '../../components/SideNavBar';
-
 const MetricCard = ({ category, value, subtitle }) => (
   <View style={styles.metricCard}>
     <Text style={styles.metricCategory}>{category}</Text>
@@ -22,8 +20,6 @@ export default function EodSummary() {
       <TopNavBar />
 
       <View style={styles.layout}>
-        {isWide && <SideNavBar />}
-
         <ScrollView style={styles.mainContent} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
           {/* Header Section */}

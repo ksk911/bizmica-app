@@ -17,6 +17,7 @@ export default function TopNavBar() {
           <View style={styles.navLinks}>
             <TouchableOpacity style={[styles.navLink, navigation.getState()?.routes[navigation.getState().index]?.name === 'Dashboard' && styles.navLinkActive]} onPress={() => navigation.navigate('Dashboard')}><Text style={[styles.navText, navigation.getState()?.routes[navigation.getState().index]?.name === 'Dashboard' && styles.navTextActive]}>Dashboard</Text></TouchableOpacity>
             <TouchableOpacity style={[styles.navLink, navigation.getState()?.routes[navigation.getState().index]?.name === 'RegionalLiveMap' && styles.navLinkActive]} onPress={() => navigation.navigate('RegionalLiveMap')}><Text style={[styles.navText, navigation.getState()?.routes[navigation.getState().index]?.name === 'RegionalLiveMap' && styles.navTextActive]}>Regional Map</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.navLink, navigation.getState()?.routes[navigation.getState().index]?.name === 'ShiftSiteMapping' && styles.navLinkActive]} onPress={() => navigation.navigate('ShiftSiteMapping')}><Text style={[styles.navText, navigation.getState()?.routes[navigation.getState().index]?.name === 'ShiftSiteMapping' && styles.navTextActive]}>Regional Tools</Text></TouchableOpacity>
             <TouchableOpacity style={[styles.navLink, navigation.getState()?.routes[navigation.getState().index]?.name === 'IncidentHubReview' && styles.navLinkActive]} onPress={() => navigation.navigate('IncidentHubReview')}><Text style={[styles.navText, navigation.getState()?.routes[navigation.getState().index]?.name === 'IncidentHubReview' && styles.navTextActive]}>Incident Hub</Text></TouchableOpacity>
             <TouchableOpacity style={[styles.navLink, navigation.getState()?.routes[navigation.getState().index]?.name === 'EodSummary' && styles.navLinkActive]} onPress={() => navigation.navigate('EodSummary')}><Text style={[styles.navText, navigation.getState()?.routes[navigation.getState().index]?.name === 'EodSummary' && styles.navTextActive]}>Analytics</Text></TouchableOpacity>
           </View>
@@ -25,6 +26,12 @@ export default function TopNavBar() {
 
       <View style={styles.rightSection}>
         <View style={styles.iconsRow}>
+          <TouchableOpacity>
+            <MaterialIcons name="settings" size={24} color={COLORS.onSurfaceVariant} style={styles.iconSpaced} />
+          </TouchableOpacity>
+          <TouchableOpacity>
+            <MaterialIcons name="help-outline" size={24} color={COLORS.onSurfaceVariant} style={styles.iconSpaced} />
+          </TouchableOpacity>
           <TouchableOpacity>
             <MaterialIcons name="language" size={24} color={COLORS.onSurfaceVariant} style={styles.iconSpaced} />
           </TouchableOpacity>

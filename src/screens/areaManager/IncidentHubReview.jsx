@@ -1,202 +1,318 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensions, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { COLORS } from '../../theme/colors';
 import TopNavBar from '../../components/TopNavBar';
-import SideNavBar from '../../components/SideNavBar';
+const API_BASE = 'http://192.168.1.7:5000';
+const AREA_MANAGER_USER_ID = 2;
 
-export default function IncidentHubReview() {
+export default function IncidentHubReview({ route, navigation }) {
   const { width } = useWindowDimensions();
   const isWide = width > 1024;
-  
-  const [activeTab, setActiveTab] = useState('pending');
+
+  const [activeTab, setActiveTab] = useState(route?.params?.filter || 'pending');
+  const [incidents, setIncidents] = useState([]);
+  const [sosAlerts, setSosAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState(null);
+
+  const fetchIncidents = useCallback(async () => {
+    try {
+      const [incRes, sosRes] = await Promise.all([
+        fetch(`${API_BASE}/api/incidents`),
+        fetch(`${API_BASE}/api/sos`)
+      ]);
+      const incData = await incRes.json();
+      const sosData = await sosRes.json();
+      setIncidents(incData);
+      setSosAlerts(sosData);
+      
+      if (!selectedIncident) {
+        if (route?.params?.filter === 'sos' && sosData.length > 0) {
+          setSelectedIncident(sosData[0]);
+        } else if (incData.length > 0) {
+          setSelectedIncident(incData[0]);
+        }
+      }
+    } catch (err) {
+      console.error('Data fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [route?.params?.filter, selectedIncident]);
+
+  useEffect(() => {
+    fetchIncidents();
+    const interval = setInterval(fetchIncidents, 15000);
+    return () => clearInterval(interval);
+  }, [fetchIncidents]);
+
+  const handleClose = async (incidentId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/incidents/${incidentId}/close`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ closed_by: AREA_MANAGER_USER_ID }),
+      });
+      if (res.ok) {
+        Alert.alert('✅ Incident Closed', 'The incident has been marked as resolved.');
+        fetchIncidents();
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Could not reach server.');
+    }
+  };
+
+  const handleAcknowledgeSOS = async (sosId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/sos/${sosId}/acknowledge`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acknowledged_by: AREA_MANAGER_USER_ID }),
+      });
+      if (res.ok) {
+        Alert.alert('✅ Acknowledged', 'SOS alert has been acknowledged. Response team dispatched.');
+        fetchIncidents();
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Could not reach server.');
+    }
+  };
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return 'Unknown';
+    return new Date(dateStr).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  };
+
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case 'CRITICAL': return '#93000a';
+      case 'HIGH': return COLORS.error;
+      case 'MEDIUM': return '#d97706';
+      default: return COLORS.secondary;
+    }
+  };
+
+  const pendingIncidents = incidents.filter(i => i.status === 'OPEN' || i.status === 'UNDER_INVESTIGATION');
+  const closedIncidents = incidents.filter(i => i.status === 'CLOSED');
+  const displayList = activeTab === 'sos' ? sosAlerts : (activeTab === 'pending' ? pendingIncidents : closedIncidents);
+
+
 
   return (
     <View style={styles.container}>
       <TopNavBar />
       <View style={styles.layout}>
-        {isWide && <SideNavBar />}
-
-        {/* Content Layout: 2 Columns */}
         <View style={[styles.contentWrapper, !isWide && { flexDirection: 'column' }]}>
-          
-          {/* Middle Column: Review Queue & Logs */}
-          <ScrollView style={styles.middleColumn} showsVerticalScrollIndicator={false}>
+          {/* Middle Column: Incident Queue */}
+          <ScrollView
+            style={styles.middleColumn}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchIncidents(); }} />}
+          >
             <View style={styles.headerRow}>
               <View>
-                <Text style={styles.pageTitle}>Review{'\n'}Queue</Text>
+                <Text style={styles.pageTitle}>Incident{'\n'}Hub</Text>
               </View>
               <View style={styles.tabToggle}>
-                <TouchableOpacity 
-                  style={[styles.tabBtn, activeTab === 'pending' && styles.tabBtnActive]} 
-                  onPress={() => setActiveTab('pending')}
+                <TouchableOpacity
+                  style={[styles.tabBtn, activeTab === 'pending' && styles.tabBtnActive]}
+                  onPress={() => { setActiveTab('pending'); setSelectedIncident(null); }}
                 >
-                  <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>Pending{'\n'}Review</Text>
+                  <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>Pending{'\n'}({pendingIncidents.length})</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.tabBtn, activeTab === 'approved' && styles.tabBtnActive]} 
-                  onPress={() => setActiveTab('approved')}
+                <TouchableOpacity
+                  style={[styles.tabBtn, activeTab === 'approved' && styles.tabBtnActive]}
+                  onPress={() => { setActiveTab('approved'); setSelectedIncident(null); }}
                 >
-                  <Text style={[styles.tabText, activeTab === 'approved' && styles.tabTextActive]}>Approved</Text>
+                  <Text style={[styles.tabText, activeTab === 'approved' && styles.tabTextActive]}>Resolved{'\n'}({closedIncidents.length})</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabBtn, activeTab === 'sos' && styles.tabBtnActive, sosAlerts.length > 0 && { backgroundColor: COLORS.errorContainer }]}
+                  onPress={() => { setActiveTab('sos'); setSelectedIncident(null); }}
+                >
+                  <Text style={[styles.tabText, activeTab === 'sos' && styles.tabTextActive, sosAlerts.length > 0 && { color: COLORS.onErrorContainer, fontWeight: '800' }]}>🚨 SOS{'\n'}({sosAlerts.length})</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             <Text style={styles.pageSubtitle}>
-              Auto-routed checklists pending{'\n'}regional validation for site{'\n'}compliance and safety protocols.
+              Real-time incidents reported{'\n'}by field supervisors.
             </Text>
 
-            <View style={styles.cardsList}>
-              {/* Active Card */}
-              <View style={[styles.queueCard, styles.queueCardActive]}>
-                <View style={styles.queueCardCol}>
-                  <Text style={styles.queueLabel}>ID</Text>
-                  <Text style={styles.queueValue}>#INC-4821</Text>
-                </View>
-                <View style={[styles.queueCardCol, { flex: 1.5 }]}>
-                  <Text style={styles.queueLabel}>SITE LOCATION</Text>
-                  <Text style={styles.queueValue}>Northwest Distribution Center</Text>
-                </View>
-                <View style={[styles.queueCardCol, { flex: 1 }]}>
-                  <Text style={styles.queueLabel}>SUPERVISOR</Text>
-                  <View style={styles.supervisorRow}>
-                    <View style={styles.supervisorAvatarDark}><Text style={styles.avatarTextLight}>RA</Text></View>
-                    <Text style={styles.queueValue}>Ravi{'\n'}Agarwal</Text>
+            {loading ? (
+              <ActivityIndicator size="large" color={COLORS.primaryContainer} style={{ marginTop: 40 }} />
+            ) : (
+              <View style={styles.cardsList}>
+                {displayList.length === 0 ? (
+                  <View style={{ padding: 32, alignItems: 'center' }}>
+                    <MaterialIcons name="check-circle-outline" size={48} color={COLORS.secondary} />
+                    <Text style={{ color: COLORS.onSurfaceVariant, marginTop: 12, fontWeight: '600' }}>No incidents in this category</Text>
                   </View>
-                </View>
+                ) : displayList.map((incident) => (
+                  <TouchableOpacity
+                    key={incident.id}
+                    style={[
+                      styles.queueCard,
+                      activeTab === 'sos' && incident.status === 'OPEN' && { borderColor: COLORS.error, borderWidth: 2 },
+                      activeTab === 'sos' && incident.status === 'ACKNOWLEDGED' && { borderColor: COLORS.secondary, borderWidth: 2 },
+                      activeTab === 'sos' && incident.status === 'CLOSED' && { opacity: 0.6 },
+                      selectedIncident?.id === incident.id && styles.queueCardActive
+                    ]}
+                    onPress={() => setSelectedIncident(incident)}
+                  >
+                    <View style={[styles.queueCardCol, { width: 60 }]}>
+                      <Text style={styles.queueLabel}>ID</Text>
+                      <Text style={styles.queueValue}>#{String(incident.id).padStart(4, '0')}</Text>
+                    </View>
+                    <View style={[styles.queueCardCol, { flex: 1.2 }]}>
+                      <Text style={styles.queueLabel}>SITE</Text>
+                      <Text style={styles.queueValue}>{incident.site_name}</Text>
+                    </View>
+                    <View style={[styles.queueCardCol, { flex: 1 }]}>
+                      <Text style={styles.queueLabel}>SUPERVISOR</Text>
+                      <View style={styles.supervisorRow}>
+                        <View style={styles.supervisorAvatarDark}>
+                          <Text style={styles.avatarTextLight}>
+                            {(incident.reported_by_name || incident.triggered_by_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </Text>
+                        </View>
+                        <Text style={[styles.queueValue, { fontSize: 12 }]}>{(incident.reported_by_name || incident.triggered_by_name || 'Unknown').split(' ').join('\n')}</Text>
+                      </View>
+                    </View>
+                    <View style={[styles.queueCardCol, { width: 90, alignItems: 'flex-end' }]}>
+                      <Text style={styles.queueLabel}>STATUS</Text>
+                      <Text style={[
+                        styles.queueValue, 
+                        { fontSize: 11, textAlign: 'right' },
+                        incident.status === 'OPEN' && activeTab === 'sos' ? { color: COLORS.error } : null,
+                        incident.status === 'ACKNOWLEDGED' ? { color: COLORS.secondary } : null,
+                        incident.status === 'CLOSED' ? { color: COLORS.onSurfaceVariant } : null
+                      ]}>
+                        {incident.status}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-
-              {/* Inactive Card */}
-              <View style={styles.queueCard}>
-                <View style={styles.queueCardCol}>
-                  <Text style={styles.queueLabel}>ID</Text>
-                  <Text style={styles.queueValue}>#INC-4822</Text>
-                </View>
-                <View style={[styles.queueCardCol, { flex: 1.5 }]}>
-                  <Text style={styles.queueLabel}>SITE LOCATION</Text>
-                  <Text style={styles.queueValue}>East Bay Logistics Hub</Text>
-                </View>
-                <View style={[styles.queueCardCol, { flex: 1 }]}>
-                  <Text style={styles.queueLabel}>SUPERVISOR</Text>
-                  <View style={styles.supervisorRow}>
-                    <View style={styles.supervisorAvatarLight}><Text style={styles.avatarTextDark}>PS</Text></View>
-                    <Text style={[styles.queueValue, { color: COLORS.onSurfaceVariant }]}>Priya{'\n'}Sharma</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.alertLogsHeader}>
-              <View>
-                <Text style={styles.sectionTitleBlack}>Alert Logs</Text>
-                <Text style={styles.sectionSubtitle}>Exceptions and system-generated conflict alerts</Text>
-              </View>
-              <TouchableOpacity style={styles.filterBtn}>
-                <MaterialIcons name="filter-list" size={16} color={COLORS.secondary} />
-                <Text style={styles.filterText}>Filter Logs</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.table}>
-              <View style={styles.tableHead}>
-                <Text style={[styles.tableHeadText, { flex: 1 }]}>TICKET ID</Text>
-                <Text style={[styles.tableHeadText, { flex: 1.5 }]}>SITE</Text>
-                <Text style={[styles.tableHeadText, { flex: 1.5 }]}>OFFICER</Text>
-                <Text style={[styles.tableHeadText, { flex: 1 }]}>TIMESTAMP</Text>
-              </View>
-              
-              <View style={styles.tableRow}>
-                <Text style={[styles.tableCellBold, { flex: 1 }]}>#INC-8821</Text>
-                <Text style={[styles.tableCellBold, { flex: 1.5, color: COLORS.onSurfaceVariant }]}>TechPark Alpha</Text>
-                <Text style={[styles.tableCell, { flex: 1.5 }]}>Vikram Singh</Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>Oct 24, 09:12 AM</Text>
-              </View>
-              
-              <View style={styles.tableRow}>
-                <Text style={[styles.tableCellBold, { flex: 1 }]}>#INC-8819</Text>
-                <Text style={[styles.tableCellBold, { flex: 1.5, color: COLORS.onSurfaceVariant }]}>Residential Hub 4</Text>
-                <Text style={[styles.tableCell, { flex: 1.5 }]}>Anita Rao</Text>
-                <Text style={[styles.tableCell, { flex: 1 }]}>Oct 24, 08:45 AM</Text>
-              </View>
-            </View>
-
+            )}
           </ScrollView>
 
-          {/* Right Column: Detail Sidebar */}
+          {/* Right Column: Detail Panel */}
           <ScrollView style={styles.rightColumn} showsVerticalScrollIndicator={false}>
-            <View style={styles.rightColHeader}>
-              <View style={styles.badgeDark}>
-                <Text style={styles.badgeDarkText}>HIGH PRIORITY INCIDENT</Text>
-              </View>
-              <TouchableOpacity style={styles.closeBtn}>
-                <MaterialIcons name="close" size={20} color={COLORS.onSurfaceVariant} />
-              </TouchableOpacity>
-            </View>
+            {selectedIncident ? (
+              <>
+                <View style={styles.rightColHeader}>
+                  <View style={[styles.badgeDark, { backgroundColor: activeTab === 'sos' && selectedIncident.status === 'OPEN' ? COLORS.error : activeTab === 'sos' && selectedIncident.status === 'ACKNOWLEDGED' ? COLORS.secondary : getSeverityColor(selectedIncident.severity) }]}>
+                    <Text style={styles.badgeDarkText}>{selectedIncident.status || 'OPEN'}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.closeBtn} onPress={() => setSelectedIncident(null)}>
+                    <MaterialIcons name="close" size={20} color={COLORS.onSurfaceVariant} />
+                  </TouchableOpacity>
+                </View>
 
-            <Text style={styles.detailTitle}>#INC-4821 Details</Text>
+                <Text style={styles.detailTitle}>#{String(selectedIncident.id).padStart(4, '0')} Details</Text>
 
-            <View style={styles.infoBox}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoBoxLabel}>OCCURRENCE TIME</Text>
-                <Text style={styles.infoBoxValue}>Oct 24, 2024 • 08:42:15 AM</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.infoBoxLabel, { textAlign: 'right' }]}>LOCATION</Text>
-                <Text style={[styles.infoBoxValue, { textAlign: 'right' }]}>Loading Dock A-12</Text>
-              </View>
-            </View>
+                <View style={styles.infoBox}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.infoBoxLabel}>REPORTED AT</Text>
+                    <Text style={styles.infoBoxValue}>{formatTime(selectedIncident.opened_at || selectedIncident.triggered_at)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.infoBoxLabel, { textAlign: 'right' }]}>SITE</Text>
+                    <Text style={[styles.infoBoxValue, { textAlign: 'right' }]}>{selectedIncident.site_name}</Text>
+                  </View>
+                </View>
 
-            <View style={styles.detailSection}>
-              <View style={styles.detailSectionHeader}>
-                <MaterialIcons name="fact-check" size={16} color={COLORS.primaryContainer} />
-                <Text style={styles.detailSectionTitle}>CHECKLIST COMPLIANCE</Text>
-              </View>
-              
-              <View style={styles.checklistRow}>
-                <Text style={styles.checklistText}>PPE protocols strictly followed?</Text>
-                <MaterialIcons name="check-circle" size={20} color={COLORS.secondary} />
-              </View>
-              <View style={styles.checklistRow}>
-                <Text style={styles.checklistText}>Emergency shutdown engaged?</Text>
-                <MaterialIcons name="check-circle" size={20} color={COLORS.secondary} />
-              </View>
-              <View style={styles.checklistRowUnchecked}>
-                <Text style={styles.checklistTextUnchecked}>First aid administered on-site?</Text>
-                <MaterialIcons name="radio-button-unchecked" size={20} color={COLORS.outlineVariant} />
-              </View>
-            </View>
+                <View style={styles.detailSection}>
+                  <View style={styles.detailSectionHeader}>
+                    <MaterialIcons name="category" size={16} color={COLORS.primaryContainer} />
+                    <Text style={styles.detailSectionTitle}>INCIDENT TYPE</Text>
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.primaryContainer }}>
+                    {activeTab === 'sos' ? 'SOS EMERGENCY' : (selectedIncident.incident_type || 'Unclassified')}
+                  </Text>
+                </View>
 
-            <View style={styles.detailSection}>
-              <View style={styles.detailSectionHeader}>
-                <MaterialIcons name="chat-bubble" size={16} color={COLORS.primaryContainer} />
-                <Text style={styles.detailSectionTitle}>SUPERVISOR REMARKS</Text>
-              </View>
-              
-              <View style={styles.remarksBox}>
-                <Text style={styles.remarksText}>
-                  "Minor hydraulic fluid leak detected during routine inspection of forklift #092. Area secured immediately. No injuries reported. Maintenance crew dispatched for repair. Requesting full approval for log closure."
+                <View style={styles.detailSection}>
+                  <View style={styles.detailSectionHeader}>
+                    <MaterialIcons name="chat-bubble" size={16} color={COLORS.primaryContainer} />
+                    <Text style={styles.detailSectionTitle}>SUPERVISOR REMARKS</Text>
+                  </View>
+                  <View style={styles.remarksBox}>
+                    <Text style={styles.remarksText}>"{selectedIncident.description || 'SOS Triggered - Emergency Assistance Requested'}"</Text>
+                  </View>
+                  <Text style={styles.remarksAuthor}>— {(selectedIncident.reported_by_name || selectedIncident.triggered_by_name || 'Unknown').toUpperCase()}, Site Supervisor</Text>
+                </View>
+
+                {(selectedIncident.latitude || selectedIncident.trigger_latitude) && (
+                  <View style={styles.detailSection}>
+                    <View style={styles.detailSectionHeader}>
+                      <MaterialIcons name="location-on" size={16} color={COLORS.primaryContainer} />
+                      <Text style={styles.detailSectionTitle}>GPS COORDINATES</Text>
+                    </View>
+                    <Text style={{ fontSize: 14, color: COLORS.onSurface, fontWeight: '600' }}>
+                      {parseFloat(selectedIncident.latitude || selectedIncident.trigger_latitude).toFixed(5)}, {parseFloat(selectedIncident.longitude || selectedIncident.trigger_longitude).toFixed(5)}
+                    </Text>
+                  </View>
+                )}
+
+                {selectedIncident.status !== 'CLOSED' && activeTab !== 'sos' && (
+                  <View style={styles.actionsFooter}>
+                    <TouchableOpacity
+                      style={styles.approveBtn}
+                      onPress={() => handleClose(selectedIncident.id)}
+                    >
+                      <MaterialIcons name="check-circle" size={18} color={COLORS.onPrimary} />
+                      <Text style={styles.approveBtnText}>Close Incident</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {selectedIncident.status === 'OPEN' && activeTab === 'sos' && (
+                  <View style={styles.actionsFooter}>
+                    <TouchableOpacity
+                      style={[styles.approveBtn, { backgroundColor: COLORS.error }]}
+                      onPress={() => handleAcknowledgeSOS(selectedIncident.id)}
+                    >
+                      <MaterialIcons name="campaign" size={18} color={COLORS.onError} />
+                      <Text style={[styles.approveBtnText, { color: COLORS.onError }]}>Acknowledge & Dispatch</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {selectedIncident.status !== 'OPEN' && activeTab === 'sos' && (
+                  <View style={[styles.actionsFooter, { opacity: 0.5 }]}>
+                    <View style={[styles.approveBtn, { backgroundColor: COLORS.secondary }]}>
+                      <MaterialIcons name="verified" size={18} color="#fff" />
+                      <Text style={styles.approveBtnText}>Acknowledged</Text>
+                    </View>
+                  </View>
+                )}
+                {selectedIncident.status === 'CLOSED' && activeTab !== 'sos' && (
+                  <View style={[styles.actionsFooter, { opacity: 0.5 }]}>
+                    <View style={[styles.approveBtn, { backgroundColor: COLORS.secondary }]}>
+                      <MaterialIcons name="verified" size={18} color="#fff" />
+                      <Text style={styles.approveBtnText}>Resolved</Text>
+                    </View>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={{ padding: 32, alignItems: 'center', marginTop: 64 }}>
+                <MaterialIcons name="touch-app" size={48} color={COLORS.onSurfaceVariant} />
+                <Text style={{ color: COLORS.onSurfaceVariant, marginTop: 12, fontWeight: '600', textAlign: 'center' }}>
+                  Select an incident from the queue to view details
                 </Text>
               </View>
-              <Text style={styles.remarksAuthor}>— RAVI AGARWAL, Site Supervisor</Text>
-            </View>
-
-            <View style={styles.actionsFooter}>
-              <TouchableOpacity style={styles.approveBtn}>
-                <MaterialIcons name="check-circle" size={18} color={COLORS.onPrimary} />
-                <Text style={styles.approveBtnText}>Approve</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.sendBackBtn}>
-                <MaterialIcons name="keyboard-return" size={18} color="#ba1a1a" />
-                <Text style={styles.sendBackBtnText}>Send Back</Text>
-              </TouchableOpacity>
-            </View>
+            )}
           </ScrollView>
-
         </View>
       </View>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.surface },

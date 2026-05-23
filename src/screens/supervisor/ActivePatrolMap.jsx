@@ -1,19 +1,64 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as Location from 'expo-location';
 
 export default function ActivePatrolMap() {
   const navigation = useNavigation();
+  const [location, setLocation] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.error('Permission not granted');
+          setLoading(false);
+          return;
+        }
+        let loc = await Location.getCurrentPositionAsync({});
+        setLocation(loc.coords);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const getMapUrl = () => {
+    if (!location) return 'https://www.openstreetmap.org/export/embed.html?bbox=72.7,18.4,74.1,19.4&layer=mapnik';
+    const lat = parseFloat(location.latitude);
+    const lng = parseFloat(location.longitude);
+    const offset = 0.01;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - offset},${lat - offset},${lng + offset},${lat + offset}&layer=mapnik&marker=${lat},${lng}`;
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.mapContainer}>
-        {/* Placeholder for real MapView */}
-        <Image 
-          source={{ uri: 'https://maps.googleapis.com/maps/api/staticmap?center=28.6139,77.2090&zoom=14&size=800x800&maptype=roadmap&markers=color:blue%7Clabel:S%7C28.6139,77.2090&markers=color:red%7Clabel:G%7C28.6100,77.2100&key=PLACEHOLDER' }}
-          style={styles.mapMap}
-        />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#002e85" />
+            <Text style={styles.loadingText}>Acquiring GPS...</Text>
+          </View>
+        ) : (
+          Platform.OS === 'web' ? (
+            <iframe 
+              src={getMapUrl()} 
+              style={styles.mapMap}
+              title="Live Patrol Map"
+            />
+          ) : (
+            <WebView 
+              source={{ uri: getMapUrl() }} 
+              style={styles.mapMapNative} 
+            />
+          )
+        )}
         
         <View style={styles.mapOverlayHeader}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.overlayCircleBtn}>
@@ -27,32 +72,18 @@ export default function ActivePatrolMap() {
 
         <View style={styles.bottomCard}>
           <View style={styles.cardHandle} />
-          <Text style={styles.cardTitle}>Active Personnel (2)</Text>
+          <Text style={styles.cardTitle}>Your Live Unit</Text>
           
           <View style={styles.personRow}>
             <View style={styles.personIcon}>
-              <MaterialIcons name="person" size={20} color="#002e85" />
+              <MaterialIcons name="my-location" size={20} color="#002e85" />
             </View>
             <View style={styles.personInfo}>
-              <Text style={styles.personName}>Suresh K.</Text>
-              <Text style={styles.personLocation}>North Gate • Moving</Text>
+              <Text style={styles.personName}>Supervisor (You)</Text>
+              <Text style={styles.personLocation}>
+                {location ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}` : 'Location Unavailable'}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.actionBtn}>
-              <MaterialIcons name="call" size={18} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.personRow}>
-            <View style={styles.personIcon}>
-              <MaterialIcons name="person" size={20} color="#002e85" />
-            </View>
-            <View style={styles.personInfo}>
-              <Text style={styles.personName}>Ramesh V.</Text>
-              <Text style={styles.personLocation}>Sector 4 Block A • Stationary</Text>
-            </View>
-            <TouchableOpacity style={styles.actionBtn}>
-              <MaterialIcons name="call" size={18} color="#ffffff" />
-            </TouchableOpacity>
           </View>
           
           <TouchableOpacity 
@@ -71,7 +102,10 @@ export default function ActivePatrolMap() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#0f1623' },
   mapContainer: { flex: 1, position: 'relative' },
-  mapMap: { width: '100%', height: '100%', opacity: 0.8 },
+  mapMap: { width: '100%', height: '100%', border: 'none' },
+  mapMapNative: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f6f8' },
+  loadingText: { marginTop: 12, fontSize: 16, color: '#444652', fontWeight: '600' },
   mapOverlayHeader: {
     position: 'absolute', top: 16, left: 16, right: 16,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
@@ -105,10 +139,6 @@ const styles = StyleSheet.create({
   personInfo: { flex: 1 },
   personName: { fontSize: 14, fontWeight: 'bold', color: '#0f1623' },
   personLocation: { fontSize: 12, color: '#444652', marginTop: 2 },
-  actionBtn: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: '#002e85',
-    alignItems: 'center', justifyContent: 'center'
-  },
   sosButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: '#ba1a1a', paddingVertical: 16, borderRadius: 12, marginTop: 8

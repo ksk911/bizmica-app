@@ -1,10 +1,50 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Animated } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { startLocationTracking } from '../../services/LocationService';
+
+const API_BASE = 'http://192.168.1.7:5000';
 
 export default function SupervisorLogin() {
   const navigation = useNavigation();
+  const [employeeId, setEmployeeId] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    const trimmedId = employeeId.trim().toUpperCase();
+    if (!trimmedId) {
+      Alert.alert('Missing ID', 'Please enter your Employee ID (e.g. SUP001)');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/supervisor-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee_id: trimmedId }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        Alert.alert('Login Failed', data.error || 'Invalid Employee ID');
+        return;
+      }
+
+      // Start pinging real GPS with this supervisor's actual user_id + company_id
+      startLocationTracking(data.user.id, data.user.company_id);
+
+      // Navigate to dashboard
+      navigation.navigate('SupervisorDashboard');
+
+    } catch (err) {
+      Alert.alert('Connection Error', 'Cannot reach server. Check your network.');
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -32,8 +72,11 @@ export default function SupervisorLogin() {
               <MaterialIcons name="badge" size={24} color="#444652" style={styles.inputIcon} />
               <TextInput 
                 style={styles.input} 
-                placeholder="Employee ID or Mobile"
+                placeholder="Employee ID (e.g. SUP001)"
                 placeholderTextColor="#9ca3af"
+                value={employeeId}
+                onChangeText={setEmployeeId}
+                autoCapitalize="characters"
               />
             </View>
           </View>
@@ -45,11 +88,17 @@ export default function SupervisorLogin() {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.loginButton} 
-            onPress={() => navigation.navigate('SupervisorDashboard')}
+            style={[styles.loginButton, loading && { opacity: 0.7 }]} 
+            onPress={handleLogin}
+            disabled={loading}
           >
-            <Text style={styles.loginButtonText}>Continue with OTP</Text>
-            <MaterialIcons name="arrow-forward" size={20} color="#ffffff" />
+            {loading 
+              ? <ActivityIndicator color="#ffffff" />
+              : <>
+                  <Text style={styles.loginButtonText}>Continue with OTP</Text>
+                  <MaterialIcons name="arrow-forward" size={20} color="#ffffff" />
+                </>
+            }
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.voiceHint}>

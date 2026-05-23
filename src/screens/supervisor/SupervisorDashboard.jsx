@@ -1,10 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as Location from 'expo-location';
 
 export default function SupervisorDashboard() {
   const navigation = useNavigation();
+  const [locationText, setLocationText] = useState('Fetching GPS...');
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocationText('GPS Permission Denied');
+        return;
+      }
+      let location = await Location.getCurrentPositionAsync({});
+      setLocationText(`${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}`);
+    })();
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -30,8 +44,8 @@ export default function SupervisorDashboard() {
         <View style={styles.heroCard}>
           <View style={styles.heroTopRow}>
             <View>
-              <Text style={styles.heroLabel}>Active Site</Text>
-              <Text style={styles.heroTitle}>Tech Park - Sector 4</Text>
+              <Text style={styles.heroLabel}>Live GPS Location</Text>
+              <Text style={styles.heroTitle}>{locationText}</Text>
             </View>
             <View style={styles.statusBadge}>
               <View style={styles.statusDotWrapper}>
@@ -118,7 +132,10 @@ export default function SupervisorDashboard() {
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={styles.sosBtn}>
+      <TouchableOpacity 
+        style={styles.sosBtn}
+        onPress={() => navigation.navigate('EmergencySOSActive')}
+      >
         <MaterialIcons name="emergency" size={28} color="#ffffff" />
         <Text style={styles.sosText}>SOS</Text>
       </TouchableOpacity>
@@ -136,9 +153,12 @@ export default function SupervisorDashboard() {
           <MaterialIcons name="fact-check" size={24} color="#64748b" />
           <Text style={styles.navText}>Checklist</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity 
+          style={styles.navItem}
+          onPress={() => navigation.navigate('ReportOccurrences')}
+        >
           <MaterialIcons name="assessment" size={24} color="#64748b" />
-          <Text style={styles.navText}>Reports</Text>
+          <Text style={styles.navText}>Report</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
           <MaterialIcons name="person" size={24} color="#64748b" />

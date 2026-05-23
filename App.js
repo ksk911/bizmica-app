@@ -1,6 +1,11 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// Demo Launcher
+import DemoLauncher from './src/screens/DemoLauncher';
+
+// Area Manager Screens
 import AreaManagerLogin from './src/screens/areaManager/AreaManagerLogin';
 import RegionalDashboard from './src/screens/areaManager/RegionalDashboard';
 import EodSummary from './src/screens/areaManager/EodSummary';
@@ -8,6 +13,7 @@ import RegionalLiveMap from './src/screens/areaManager/RegionalLiveMap';
 import RegionalSOSConsole from './src/screens/areaManager/RegionalSOSConsole';
 import IncidentHubReview from './src/screens/areaManager/IncidentHubReview';
 import ShiftSiteMapping from './src/screens/areaManager/ShiftSiteMapping';
+import GeofenceDrawingMap from './src/screens/areaManager/GeofenceDrawingMap';
 
 // Director Screens
 import ExecutiveLoginPortal from './src/screens/director/ExecutiveLoginPortal';
@@ -19,25 +25,34 @@ import DirectorOfficerBenchmarking from './src/screens/director/DirectorOfficerB
 import DirectorShiftEditor from './src/screens/director/DirectorShiftEditor';
 import DirectorReportingModals from './src/screens/director/DirectorReportingModals';
 
-// Supervisor Screens (For Testing)
+// Supervisor Suite
 import SupervisorNavigator from './src/screens/supervisor/SupervisorNavigator';
 
 const Stack = createNativeStackNavigator();
 
-console.log('App.js is evaluating...');
-
 export default function App() {
-  console.log('App component is rendering...');
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="SupervisorSuite" screenOptions={{ headerShown: false }}>
-        {/* Supervisor Suite Entry for Testing */}
+      <Stack.Navigator initialRouteName="DemoLauncher" screenOptions={{ headerShown: false }}>
+
+        {/* ---- DEMO ENTRY POINT ---- */}
+        <Stack.Screen name="DemoLauncher" component={DemoLauncher} />
+
+        {/* ---- SUPERVISOR FLOW ---- */}
         <Stack.Screen name="SupervisorSuite" component={SupervisorNavigator} />
-        
-        {/* Entry Portal */}
+
+        {/* ---- AREA MANAGER FLOW ---- */}
+        <Stack.Screen name="Login" component={AreaManagerLogin} />
+        <Stack.Screen name="Dashboard" component={RegionalDashboard} />
+        <Stack.Screen name="EodSummary" component={EodSummary} />
+        <Stack.Screen name="RegionalLiveMap" component={RegionalLiveMap} />
+        <Stack.Screen name="RegionalSOSConsole" component={RegionalSOSConsole} />
+        <Stack.Screen name="IncidentHubReview" component={IncidentHubReview} />
+        <Stack.Screen name="ShiftSiteMapping" component={ShiftSiteMapping} />
+        <Stack.Screen name="GeofenceDrawingMap" component={GeofenceDrawingMap} />
+
+        {/* ---- DIRECTOR FLOW ---- */}
         <Stack.Screen name="ExecutiveLogin" component={ExecutiveLoginPortal} />
-        
-        {/* Director App Routes */}
         <Stack.Screen name="DirectorDashboard" component={DirectorDashboard} />
         <Stack.Screen name="DirectorKPI" component={DirectorKPIDashboard} />
         <Stack.Screen name="AlertLogs" component={DirectorAlertLogs} />
@@ -46,16 +61,6 @@ export default function App() {
         <Stack.Screen name="ShiftEditor" component={DirectorShiftEditor} />
         <Stack.Screen name="ReportingModals" component={DirectorReportingModals} />
 
-        {/* Area Manager App Routes */}
-        <Stack.Screen name="Login" component={AreaManagerLogin} />
-        <Stack.Screen name="Dashboard" component={RegionalDashboard} />
-        <Stack.Screen name="EodSummary" component={EodSummary} />
-        <Stack.Screen name="RegionalLiveMap" component={RegionalLiveMap} />
-        <Stack.Screen name="RegionalSOSConsole" component={RegionalSOSConsole} />
-        <Stack.Screen name="IncidentHubReview" component={IncidentHubReview} />
-        <Stack.Screen name="ShiftSiteMapping" component={ShiftSiteMapping} />
-
-        {/* Director App Routes (Placeholders to be built) */}
       </Stack.Navigator>
     </NavigationContainer>
   );
